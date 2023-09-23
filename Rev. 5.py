@@ -1,0 +1,58 @@
+import cv2
+from PIL import Image
+import numpy as np
+from datetime import datetime
+
+cam = cv2.VideoCapture(0) # Select camera (typically, 0 is internal and 1 is external/USB)
+cv2.namedWindow("Camera") # Create a window with suitable name and size
+
+while True:
+    ret, frame = cam.read() # Returns true if frame is successfully captured
+    if not ret: # If camera error is detected:
+        print('Image capture failed. Check camera status.')
+        break # End the loop
+    
+    cv2.imshow('Camera', frame) # Display a live feed from the camera
+    k = cv2.waitKey(1)
+    if k%256 == 27: # If ESC key is pressed:
+        break # End the program
+
+    elif k%256 == 32: # If space bar is pressed:
+        img_name = 'grid_image.png' # Assign image name
+        cv2.imwrite(img_name, frame) # Write image to disk
+        img = cv2.imread(str(img_name)) # Reads image from disk and assigns variable for future use
+        now = datetime.now() # Reference datetime function
+        print('The following data was captured',now,':') # Display date and time of image capture
+        h,w,_ = img.shape # Derive image height and width and assign them to h and w
+        gw = 20 # Grid width, in no. of beads
+        gh = 20 # Grid height, in no. of beads
+        step = int(h/gh) # Size of each grid box, in pixels
+        offset = 80 # Offset of square viewing box from left side of captured image
+        m = 1 # Set initial value for m
+        n = 1 # Set initial value for n
+        # data = np.zeros((400,2))
+        data = list()
+        while m <= gh: # Analyze each row of squares
+            while n <= gw: # Analyze each square in row
+                rgb = np.mean(img[step*(n-1):step*n,offset+step*(m-1):offset+step*m], axis=(0,1)) # Calculate avg. RGB value of a 24-pixel-square section
+                num = n+(m-1)*gw # Bead number
+                # Current sort method is by adding R, G, and B and sorting by that sum. May need a different method moving forward... will have to run tests to determine.
+                sum = ((rgb[0]+rgb[1]+rgb[2]),num) # Produce tuple...first value is sum of R, G, and B...second is bead number
+                data.append(sum) # Add each new tuple to a running list
+                n += 1 # Advance n by 1
+            n = 1 # Reset n for next loop of m
+            m += 1 # Advance m by 1
+        sort = sorted(data, key=lambda x: x[0]) # Sort data
+        print()
+        print('(RGB Sum, Bead Number) shown below:')
+        print(sort)
+        order = []
+        for i in sort: 
+            order.append(i[1]) # Selects second value from each tuple in "sort" list, producing a new list of bead numbers in ascending order of RGB sum
+        print()
+        print('Bead numbers in order of lowest RGB sum to highest RGB sum:')
+        print(order)
+        
+cam.release() # Close webcam service
+
+cv2.destroyAllWindows() # Close open windows
